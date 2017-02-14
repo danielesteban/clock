@@ -25,40 +25,44 @@ static void draw(RGBMatrix *matrix, Font *font) {
   int centerY = height / 2;
   FrameCanvas *canvas = matrix->CreateFrameCanvas();
   clock_t lastTicks = clock();
-  // int acc = 0;
+  unsigned int acc = 0;
   while(1) {
     if (interrupt_received) return;
     clock_t ticks = clock();
+    int delta = ticks - lastTicks;
+    lastTicks = ticks;
     time_t rawtime;
     time(&rawtime);
     struct tm * timeinfo = localtime (&rawtime);
     char text[9];
     sprintf(text, "%02d:%02d:%02d", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
     canvas->Clear();
-    for (float radius = 1; radius <= centerX; radius += 1.0) {
-      float rH = fH + ((centerX - radius) * 4.0);
+    float angle = ((float) acc / 10000.0) * (M_PI / 180.0);
+    acc += delta;
+    int x = (float) centerX + (cos(angle) * 8.0);
+    int y = (float) centerY + (sin(angle) * 4.0);
+    for (float radius = 1; radius <= centerX + 8; radius += 1.0) {
+      float rH = fH + ((centerX + 8 - radius) * 3.0);
       while (rH > 360.0) rH -= 360.0;
       HSVtoRGB(fR, fG, fB, rH, fS, fV);
       Color color = Color(fR * 255, fG * 255, fB * 255);
-      DrawLine(canvas, centerX - radius, centerY + radius - 1, centerX + radius - 1, centerY + radius - 1, color);
-      DrawLine(canvas, centerX - radius, centerY - radius, centerX + radius - 1, centerY - radius, color);
-      DrawLine(canvas, centerX - radius, centerY + radius - 1, centerX - radius, centerY - radius, color);
-      DrawLine(canvas, centerX + radius - 1, centerY + radius - 1, centerX + radius - 1, centerY - radius, color);
+      DrawLine(canvas, x - radius, y + radius - 1, x + radius - 1, y + radius - 1, color);
+      DrawLine(canvas, x - radius, y - radius, x + radius - 1, y - radius, color);
+      DrawLine(canvas, x - radius, y + radius - 1, x - radius, y - radius, color);
+      DrawLine(canvas, x + radius - 1, y + radius - 1, x + radius - 1, y - radius, color);
     }
-    for (float radius = 1; radius <= centerX; radius += 1.0) {
-     float rH = fH + ((centerX - radius) * 4.0);
+    for (float radius = 1; radius <= centerX + 8; radius += 1.0) {
+     float rH = fH + ((centerX + 8 - radius) * 3.0);
      while (rH > 360.0) rH -= 360.0;
      HSVtoRGB(fR, fG, fB, rH, fS, fV);
-     DrawCircle(canvas, centerX, centerY, radius, Color(fR * 255, fG * 255, fB * 255));
+     DrawCircle(canvas, x, y, radius, Color(fR * 255, fG * 255, fB * 255));
     }
-    if((fH += 2.0) > 360.0) fH = 0;
+    if((fH += 1.0) > 360.0) fH = 0;
 
     DrawText(canvas, *font, 4, font->baseline() + 9, Color(0, 0, 0), text);
-    // DrawText(canvas, *font, width - (acc % (width * 2)), font->baseline() + 9, Color(0, 0, 0), text);
-    // acc += 1;
 
     canvas = matrix->SwapOnVSync(canvas);
-    usleep(std::max(0, 33333 - (int) (clock() - ticks)));
+    // usleep(std::max(0, 33333 - (int) (clock() - ticks)));
   }
 }
 
@@ -67,10 +71,10 @@ int main(int argc, char *argv[]) {
   defaults.hardware_mapping = "regular-pi1";
   defaults.rows = 32;
   defaults.chain_length = 2;
-  defaults.brightness = 40;
+  defaults.brightness = 70;
   // defaults.pwm_lsb_nanoseconds = 600;
   RuntimeOptions runtime;
-  // runtime.gpio_slowdown = 0;
+  runtime.gpio_slowdown = 0;
   RGBMatrix *matrix = CreateMatrixFromFlags(&argc, &argv, &defaults, &runtime);
   if (matrix == NULL) return 1;
   matrix->ApplyStaticTransformer(RotateTransformer(180));
